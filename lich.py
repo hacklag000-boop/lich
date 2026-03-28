@@ -100,33 +100,53 @@ def get_calendar(days_ahead=2):
     return events
 
 # ===== MAIN LOOP =====
+# ===== MAIN LOOP =====
 if not login():
     exit()
 
 sent_hashes = set()
+last_check_ts = time.time()  # lưu thời điểm nhận lịch gần nhất
 
 while True:
     try:
         events = get_calendar(days_ahead=2)
-        # Nếu session hết hạn, thử login lại
+        
+        # Nếu session hết hạn hoặc không lấy được sự kiện
         if not events:
             print("⚠️ Không lấy được sự kiện, đăng nhập lại...")
             login()
-            time.sleep(5)
+            time.sleep(3600)
             continue
 
         new_events = 0
+        latest_ts = None
+
         for ev in events:
             if ev["hash"] not in sent_hashes:
                 send_telegram(ev["msg"])
                 sent_hashes.add(ev["hash"])
                 new_events += 1
+            # cập nhật latest_ts cho event mới nhất
+            if latest_ts is None or ev["ts"] > latest_ts:
+                latest_ts = ev["ts"]
 
         if new_events == 0:
             print("⚠️ Không có lịch mới")
+        else:
+            print(f"✅ Có {new_events} lịch mới")
 
-        print(f"⏳ Kiểm tra xong. Chờ {CHECK_INTERVAL} giây...")
-        time.sleep(CHECK_INTERVAL)
+        # tính khoảng thời gian chờ
+        now_ts = time.time()
+        if latest_ts:
+            # hoãn lại dựa trên khoảng cách giữa now và event mới nhất (hoặc 1h mặc định)
+            wait_time = max(CHECK_INTERVAL, latest_ts - last_check_ts)
+            last_check_ts = latest_ts
+        else:
+            # nếu không có event nào mới, dùng CHECK_INTERVAL
+            wait_time = CHECK_INTERVAL
+
+        print(f"⏳ Chờ {int(wait_time)} giây trước lần kiểm tra tiếp theo...")
+        time.sleep(wait_time)
 
     except Exception as e:
         print("❌ Lỗi:", e)
