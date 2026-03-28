@@ -66,7 +66,7 @@ def get_calendar():
 
         ts = int(timestamp)
         # chỉ lấy ngày trong vòng 2 ngày tới
-        if ts < now or ts > now + 2*24*3600:
+        if ts < now or ts > now + 3*24*3600:
             continue
 
         date = time.strftime("%d/%m/%Y", time.localtime(ts))
